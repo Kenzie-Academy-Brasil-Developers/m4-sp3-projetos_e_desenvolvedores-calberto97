@@ -55,3 +55,30 @@ export const searchForDev = async (
     return next();
   }
 };
+
+export const checkEmail = async (
+  request: Request,
+  response: Response,
+  next: NextFunction
+): Promise<Response | void> => {
+  const email = request.body.email;
+
+  const queryString: string = `
+    SELECT * FROM developers WHERE email = $1;
+    `;
+
+  const queryConfig: QueryConfig = {
+    text: queryString,
+    values: [email],
+  };
+
+  const queryResult: QueryResult<tCreateDevResult> = await client.query(
+    queryConfig
+  );
+
+  if (queryResult.rowCount > 0) {
+    return response.status(409).json({message: "E-mail already registered!"})
+  }
+
+  next();
+};

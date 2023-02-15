@@ -56,6 +56,40 @@ const validateCreateProjectData = (
     );
   }
 
+  if (payload.startDate) {
+    if (
+      typeof payload.startDate !== "string" ||
+      isNaN(new Date(payload.startDate).getTime())
+    ) {
+      throw new Error(
+        '"startDate" value must be a Date in the format yyyy/mm/dd or dd/mm/yyyy'
+      );
+    }
+
+    if (typeof payload.startDate !== "string") {
+      throw new Error(
+        '"startDate" value must be a Date in the format yyyy/mm/dd or dd/mm/yyyy'
+      );
+    }
+  }
+
+  if (payload.endDate) {
+    if (
+      typeof payload.endDate !== "string" ||
+      isNaN(new Date(payload.endDate).getTime())
+    ) {
+      throw new Error(
+        '"endDate" value must be a Date in the format yyyy/mm/dd or dd/mm/yyyy'
+      );
+    }
+
+    if (typeof payload.endDate !== "string") {
+      throw new Error(
+        '"endDate" value must be a Date in the format yyyy/mm/dd or dd/mm/yyyy'
+      );
+    }
+  }
+
   payloadKeys.map((key, index) => {
     if (typeof payloadValues[index] !== "string") {
       if (key === "developerId") {
@@ -135,6 +169,40 @@ const validateUpdateProjectData = (
     );
   }
 
+  if (payload.startDate) {
+    if (
+      typeof payload.startDate !== "string" ||
+      isNaN(new Date(payload.startDate).getTime())
+    ) {
+      throw new Error(
+        '"startDate" value must be a Date in the format yyyy/mm/dd or dd/mm/yyyy'
+      );
+    }
+
+    if (typeof payload.startDate !== "string") {
+      throw new Error(
+        '"startDate" value must be a Date in the format yyyy/mm/dd or dd/mm/yyyy'
+      );
+    }
+  }
+
+  if (payload.endDate) {
+    if (
+      typeof payload.endDate !== "string" ||
+      isNaN(new Date(payload.endDate).getTime())
+    ) {
+      throw new Error(
+        '"endDate" value must be a Date in the format yyyy/mm/dd or dd/mm/yyyy'
+      );
+    }
+
+    if (typeof payload.endDate !== "string") {
+      throw new Error(
+        '"endDate" value must be a Date in the format yyyy/mm/dd or dd/mm/yyyy'
+      );
+    }
+  }
+
   payloadKeys.map((key, index) => {
     if (typeof payloadValues[index] !== "string") {
       if (key === "developerId") {
@@ -145,12 +213,38 @@ const validateUpdateProjectData = (
     }
   });
 
+  if (
+    payload.developerId &&
+    typeof payload.developerId !== "number"
+  ) {
+    throw new Error('Type of "developerId" must be number');
+  }
+
   return acceptedData;
 };
 
 const validateTechNameData = (
   payload: any
 ): iValidateTechNameRequest => {
+
+  const acceptedNames: tAcceptedTechNames[] = [
+    "JavaScript",
+    "Python",
+    "React",
+    "Express.js",
+    "HTML",
+    "CSS",
+    "Django",
+    "PostgreSQL",
+    "MongoDB",
+  ];
+
+  if (typeof payload.name !== "string") {
+    throw new Error(
+      `Technology name must be a string with a value of any of these: "${acceptedNames}"`
+    );
+  }
+
   let treatedName =
     payload.name[0].toUpperCase() +
     payload.name.slice(1).toLowerCase();
@@ -172,18 +266,6 @@ const validateTechNameData = (
   payload.name = treatedName;
 
   const { name } = payload;
-
-  const acceptedNames: tAcceptedTechNames[] = [
-    "JavaScript",
-    "Python",
-    "React",
-    "Express.js",
-    "HTML",
-    "CSS",
-    "Django",
-    "PostgreSQL",
-    "MongoDB",
-  ];
 
   if (!name) {
     throw new Error('Missing required key: "name"');
@@ -265,14 +347,6 @@ export const createProject = async (
 
     return response.status(201).json(queryResult.rows[0]);
   } catch (error: any) {
-    if (
-      error.message.includes("date/time field value out of range:")
-    ) {
-      return response.status(400).json({
-        error:
-          "Date values must be in the format yyyy/mm/dd or dd/mm/yyyy",
-      });
-    }
     console.log(error);
     return response.status(400).json({ error: error.message });
   }
@@ -368,21 +442,6 @@ export const updateProject = async (
 
     return response.status(200).json(queryResult.rows[0]);
   } catch (error: any) {
-    if (
-      error.message.includes("invalid input syntax for type integer:")
-    ) {
-      return response
-        .status(400)
-        .json({ error: 'Type of "developerId" must be a number' });
-    } else if (
-      error.message.includes("invalid input syntax for type date:") ||
-      error.message.includes("date/time field value out of range")
-    ) {
-      return response.status(400).json({
-        error:
-          "Date values must be in the format yyyy/mm/dd or dd/mm/yyyy",
-      });
-    }
     console.log(error);
     return response.status(400).json({ error: error.message });
   }
@@ -472,7 +531,9 @@ export const addTechtoProject = async (
     const { name } = request.body;
 
     let queryString: string = `
-    SELECT * FROM technologies WHERE name = $1
+      SELECT *
+      FROM technologies
+      WHERE name = $1
     `;
 
     let queryConfig: QueryConfig = {
@@ -486,8 +547,8 @@ export const addTechtoProject = async (
     const techID = +queryResult.rows[0].id;
 
     queryString = `
-    SELECT * FROM projects_technologies
-    WHERE "projectId" = $1;    
+      SELECT * FROM projects_technologies
+      WHERE "projectId" = $1;    
     `;
 
     queryConfig = {
@@ -556,26 +617,7 @@ export const addTechtoProject = async (
 
     return response.status(201).json(queryResult.rows[0]);
   } catch (error: any) {
-    if (
-      error.message.includes(
-        "Cannot read properties of undefined (reading 'toUpperCase')"
-      )
-    ) {
-      const acceptedNames: tAcceptedTechNames[] = [
-        "JavaScript",
-        "Python",
-        "React",
-        "Express.js",
-        "HTML",
-        "CSS",
-        "Django",
-        "PostgreSQL",
-        "MongoDB",
-      ];
-      return response.status(400).json({
-        error: `Technology name must be a string with a value of any of these: "${acceptedNames}"`,
-      });
-    }
+
     console.log(error);
     return response.status(400).json({ error: error.message });
   }

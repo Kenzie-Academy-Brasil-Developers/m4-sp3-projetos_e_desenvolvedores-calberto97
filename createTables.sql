@@ -43,8 +43,7 @@ ADD FOREIGN KEY ("devInfo") REFERENCES developer_infos("id") ON DELETE CASCADE;
 ALTER TABLE projects
 ADD COLUMN "developerID" INTEGER NOT NULL;
 ALTER TABLE projects
-ADD FOREIGN KEY ("developerID") REFERENCES developers("id");
-
+ADD FOREIGN KEY ("developerID") REFERENCES developers("id") ON DELETE CASCADE;
 ALTER TABLE projects_technologies
 ADD COLUMN "projectID" INTEGER NOT NULL;
 ALTER TABLE projects_technologies
@@ -53,14 +52,14 @@ ALTER TABLE projects_technologies
 ADD COLUMN "technologyID" INTEGER NOT NULL;
 ALTER TABLE projects_technologies
 ADD FOREIGN KEY ("technologyID") REFERENCES technologies("id");
-
-ALTER TABLE developers RENAME COLUMN "devInfo" TO "developerInfoId";
-
-ALTER TABLE projects RENAME COLUMN "developerID" TO "developerId";
-
-ALTER TABLE projects_technologies RENAME COLUMN "projectID" TO "projectId";
-
-ALTER TABLE projects_technologies RENAME COLUMN "technologyID" TO "technologyId";
-
-ALTER TABLE projects_technologies ALTER COLUMN "technologyId" DROP NOT NULL;
+ALTER TABLE developers
+    RENAME COLUMN "devInfo" TO "developerInfoId";
+ALTER TABLE projects
+    RENAME COLUMN "developerID" TO "developerId";
+ALTER TABLE projects_technologies
+    RENAME COLUMN "projectID" TO "projectId";
+ALTER TABLE projects_technologies
+    RENAME COLUMN "technologyID" TO "technologyId";
+ALTER TABLE projects_technologies
+ALTER COLUMN "technologyId" DROP NOT NULL;
 

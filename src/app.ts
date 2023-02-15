@@ -9,7 +9,7 @@ import {
   updateDev,
   updateDevInfo,
 } from "./logic/logicDev";
-import { searchForDev } from "./middlewares/middlewareDev";
+import { checkEmail, searchForDev } from "./middlewares/middlewareDev";
 import {
   addTechtoProject,
   createProject,
@@ -28,11 +28,11 @@ import {
 const app: Application = express();
 app.use(json());
 
-app.post("/developers", createDev);
+app.post("/developers", checkEmail, createDev);
 app.get("/developers", showAllDevs);
 app.get("/developers/:id", searchForDev, showDevByID);
 app.post("/developers/:id/infos", searchForDev, createDevInfo);
-app.patch("/developers/:id", searchForDev, updateDev);
+app.patch("/developers/:id", searchForDev, checkEmail, updateDev);
 app.patch("/developers/:id/infos", searchForDev, updateDevInfo);
 app.delete("/developers/:id", searchForDev, deleteDev);
 

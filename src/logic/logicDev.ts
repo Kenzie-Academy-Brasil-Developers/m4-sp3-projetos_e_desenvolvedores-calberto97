@@ -48,18 +48,27 @@ const validateCreateData = (
     throw new Error('Type of "email" must be string');
   }
 
-  if (
-    payload.developerSince &&
-    typeof payload.developerSince !== "string"
-  ) {
-    throw new Error('Type of "developerSince" must be string');
+  if (payload.developerSince) {
+    if (
+      typeof payload.developerSince !== "string" ||
+      isNaN(new Date(payload.developerSince).getTime())
+    ) {
+      throw new Error(
+        '"developerSince" value must be a Date in the format yyyy/mm/dd or dd/mm/yyyy'
+      );
+    }
   }
 
-  if (
-    payload.preferredOS &&
-    typeof payload.preferredOS !== "string"
-  ) {
-    throw new Error('Type of "preferredOS" must be string');
+  if (payload.preferredOS) {
+    if (
+      payload.preferredOS !== "Windows" &&
+      payload.preferredOS !== "Linux" &&
+      payload.preferredOS !== "MacOs"
+    ) {
+      throw new Error(
+        '"preferredOS" must be either Windows, Linux or MacOS'
+      );
+    }
   }
 
   return payload;
@@ -70,12 +79,49 @@ const validateUpdateData = (
   key1: string,
   key2: string
 ): iUpdateDevInfoRequest => {
-  if (payload[key1] || payload[key2]) {
-    if (payload[key1] && typeof payload[key1] !== "string") {
-      throw new Error(`Type of "${payload[key1]}" must be string`);
+  const payloadKeys = Object.keys(payload);
+
+  if (payload.developerSince) {
+    if (
+      typeof payload.developerSince !== "string" ||
+      isNaN(new Date(payload.developerSince).getTime())
+    ) {
+      throw new Error(
+        '"developerSince" value must be a Date in the format yyyy/mm/dd or dd/mm/yyyy'
+      );
     }
-    if (payload[key2] && typeof payload[key2] !== "string") {
-      throw new Error(`Type of "${payload[key2]}" must be string`);
+
+    if (typeof payload.developerSince !== "string") {
+      throw new Error(
+        '"developerSince" value must be a Date in the format yyyy/mm/dd or dd/mm/yyyy'
+      );
+    }
+  }
+
+  if (payload.preferredOS) {
+    if (
+      payload.preferredOS !== "Windows" &&
+      payload.preferredOS !== "Linux" &&
+      payload.preferredOS !== "MacOs"
+    ) {
+      throw new Error(
+        '"preferredOS" must be either Windows, Linux or MacOS'
+      );
+    }
+  }
+
+  if (payload[payloadKeys[0]] || payload[payloadKeys[1]]) {
+    if (
+      payload[payloadKeys[0]] &&
+      typeof payload[payloadKeys[0]] !== "string"
+    ) {
+      throw new Error(`Type of "${payloadKeys[0]}" must be string`);
+    }
+    if (
+      payload[payloadKeys[1]] &&
+      typeof payload[payloadKeys[1]] !== "string"
+    ) {
+      throw new Error(`Type of "${payloadKeys[1]}" must be string`);
     }
     return payload;
   } else {
@@ -108,15 +154,6 @@ export const createDev = async (
 
     return response.status(201).json(queryResult.rows[0]);
   } catch (error: any) {
-    if (
-      error.message.includes(
-        'duplicate key value violates unique constraint "developers_email_key"'
-      )
-    ) {
-      return response
-        .status(409)
-        .json({ error: "Email already in use!" });
-    }
     console.log(error);
     return response.status(400).json({ error: error.message });
   }
@@ -178,8 +215,31 @@ export const createDevInfo = async (
   try {
     const id = +request.params.id;
 
+    let queryString: string = `
+    SELECT * FROM developers
+    WHERE id = $1;
+    `;
+
+    let queryConfig: QueryConfig = {
+      text: queryString,
+      values: [id],
+    };
+
+    let queryResult: QueryResult<tCreateDevResult> =
+      await client.query(queryConfig);
+    let devInfoID = queryResult.rows[0].developerInfoId;
+    if (devInfoID) {
+      return response.status(409).json({
+        message: `Developer info already exists on developer with "ID" ${id}`,
+      });
+    }
+
     let treatedPreferredOS;
-    if (request.body.preferredOS) {
+
+    if (
+      request.body.preferredOS &&
+      typeof request.body.preferredOS === "string"
+    ) {
       treatedPreferredOS =
         request.body.preferredOS[0].toUpperCase() +
         request.body.preferredOS.slice(1).toLowerCase();
@@ -190,9 +250,9 @@ export const createDevInfo = async (
     }
 
     validateCreateData(request.body, "developerSince", "preferredOS");
-    const { developerSince, preferredOS } = request.body;
+    let { developerSince, preferredOS } = request.body;
 
-    let queryString: string = format(
+    queryString = format(
       `
       INSERT INTO developer_infos(%I)
       VALUES (%L)
@@ -202,9 +262,8 @@ export const createDevInfo = async (
       [developerSince, preferredOS]
     );
 
-    const queryResult: QueryResult<tCreateDevInfoResult> =
-      await client.query(queryString);
-    const devInfoID = queryResult.rows[0].id;
+    queryResult = await client.query(queryString);
+    devInfoID = queryResult.rows[0].id;
 
     queryString = format(
       `
@@ -217,7 +276,7 @@ export const createDevInfo = async (
       [devInfoID]
     );
 
-    const queryConfig: QueryConfig = {
+    queryConfig = {
       text: queryString,
       values: [id],
     };
@@ -226,24 +285,6 @@ export const createDevInfo = async (
 
     return response.status(201).json(queryResult.rows[0]);
   } catch (error: any) {
-    if (error.message.includes("invalid input value for enum os:")) {
-      return response.status(400).json({
-        error:
-          '"preferredOS" value must be either Windows, Linux or MacOS',
-      });
-    } else if (
-      error.message.includes("invalid input syntax for type date:")
-    ) {
-      return response.status(400).json({
-        error:
-          '"developerSince" value must be a Date in the format yyyy/mm/dd or dd/mm/yyyy',
-      });
-    } else if (error.message.includes("must be string")) {
-      return response.status(400).json({
-        error:
-          '"preferredOS" value must be either Windows, Linux or MacOS and "developerSince" value must be a Date in the format yyyy/mm/dd or dd/mm/yyyy',
-      });
-    }
     console.log(error);
     return response.status(400).json({ error: error.message });
   }
@@ -293,15 +334,6 @@ export const updateDev = async (
 
     return response.status(200).json(queryResult.rows[0]);
   } catch (error: any) {
-    if (
-      error.message.includes(
-        'duplicate key value violates unique constraint "developers_email_key"'
-      )
-    ) {
-      return response
-        .status(409)
-        .json({ error: "Email already in use!" });
-    }
     console.log(error);
     return response.status(400).json({ error: error.message });
   }
@@ -329,6 +361,12 @@ export const updateDevInfo = async (
     let queryResult: QueryResult<tCreateDevResult> =
       await client.query(queryConfig);
     const devInfoID = +queryResult.rows[0].developerInfoId!;
+
+    if (devInfoID === 0) {
+      throw new Error(
+        `Developer with "ID" ${devID} doesn't have a developerInfo to be updated`
+      );
+    }
 
     let validKeys:
       | ["developerSince"]
@@ -366,24 +404,6 @@ export const updateDevInfo = async (
     queryResult = await client.query(queryConfig);
     return response.status(200).json(queryResult.rows[0]);
   } catch (error: any) {
-    if (error.message.includes("invalid input value for enum os:")) {
-      return response.status(400).json({
-        error:
-          '"preferredOS" value must be either Windows, Linux or MacOS',
-      });
-    } else if (
-      error.message.includes("invalid input syntax for type date:")
-    ) {
-      return response.status(400).json({
-        error:
-          '"developerSince" value must be a Date in the format yyyy/mm/dd',
-      });
-    } else if (error.message.includes("must be string")) {
-      return response.status(400).json({
-        error:
-          '"preferredOS" value must be either Windows, Linux or MacOS and "developerSince" value must be a Date in the format yyyy/mm/dd or dd/mm/yyyy',
-      });
-    }
     console.log(error);
     return response.status(400).json({ error: error.message });
   }
